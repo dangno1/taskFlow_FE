@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 // Component Imports
@@ -11,6 +11,8 @@ import TaskDetailsModal from './components/TaskDetailsModal';
 import DashboardTab from './components/DashboardTab';
 import ProjectsTab from './components/ProjectsTab';
 import KanbanTab from './components/KanbanTab';
+import BillingTab from './components/BillingTab';
+import NotificationBanner from './components/NotificationBanner';
 
 const API_BASE = 'http://localhost:5050/api';
 
@@ -25,20 +27,93 @@ function App() {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [resetToken, setResetToken] = useState('');
-  const [passwordResetMessage, setPasswordResetMessage] = useState('');
-  const [passwordResetError, setPasswordResetError] = useState('');
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteToken, setInviteToken] = useState('');
+  const [declineToken, setDeclineToken] = useState('');
+  const [notification, setNotification] = useState({
+    message: '',
+    type: 'info',
+    visible: false,
+    actionLabel: '',
+    cancelLabel: '',
+    onAction: null,
+    onCancel: null
+  });
+  const notificationTimerRef = useRef(null);
+  const processedInviteRequestRef = useRef('');
+
+  const hideNotification = () => {
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current);
+      notificationTimerRef.current = null;
+    }
+    setNotification((prev) => ({
+      ...prev,
+      visible: false,
+      actionLabel: '',
+      cancelLabel: '',
+      onAction: null,
+      onCancel: null
+    }));
+  };
+
+  const showNotification = (messageOrOptions, type = 'info') => {
+    const options = typeof messageOrOptions === 'string'
+      ? { message: messageOrOptions, type }
+      : messageOrOptions;
+
+    if (!options?.message) return;
+
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current);
+    }
+
+    const onCancel = () => {
+      hideNotification();
+      if (typeof options.onCancel === 'function') {
+        options.onCancel();
+      }
+    };
+
+    const onAction = async () => {
+      hideNotification();
+      if (typeof options.onAction === 'function') {
+        await options.onAction();
+      }
+    };
+
+    setNotification({
+      message: options.message,
+      type: options.type || 'info',
+      visible: true,
+      actionLabel: options.actionLabel || '',
+      cancelLabel: options.cancelLabel || '',
+      onAction: options.onAction ? onAction : null,
+      onCancel: options.cancelLabel ? onCancel : null
+    });
+
+    notificationTimerRef.current = setTimeout(() => {
+      hideNotification();
+    }, 20000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
+    };
+  }, []);
 
   // Profile Update State
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileUsername, setProfileUsername] = useState('');
   const [profilePassword, setProfilePassword] = useState('');
   const [profileAvatar, setProfileAvatar] = useState('');
-  const [profileError, setProfileError] = useState('');
-  const [profileSuccess, setProfileSuccess] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
 
   // App/Task State
@@ -58,17 +133,19 @@ function App() {
   const [editTaskTitle, setEditTaskTitle] = useState('');
   const [editTaskDesc, setEditTaskDesc] = useState('');
   const [editTaskDeadline, setEditTaskDeadline] = useState('');
-  const [editTaskPriority, setEditTaskPriority] = useState('Trung bình');
-  const [editTaskCategory, setEditTaskCategory] = useState('Cá nhân');
+  const [editTaskPriority, setEditTaskPriority] = useState('Medium');
+  const [editTaskCategory, setEditTaskCategory] = useState('Personal');
   const [editTaskProject, setEditTaskProject] = useState('');
   const [editTaskStatus, setEditTaskStatus] = useState('todo');
+  const [editTaskAssignee, setEditTaskAssignee] = useState('');
 
   // Input States for Tasks
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newPriority, setNewPriority] = useState('Trung bình');
-  const [newCategory, setNewCategory] = useState('Cá nhân');
+  const [newPriority, setNewPriority] = useState('Medium');
+  const [newCategory, setNewCategory] = useState('Personal');
   const [newDeadline, setNewDeadline] = useState('');
   const [newTaskProject, setNewTaskProject] = useState('');
+  const [newTaskAssignee, setNewTaskAssignee] = useState('');
 
   // Project State Variables
   const [projects, setProjects] = useState([]);
@@ -81,7 +158,7 @@ function App() {
   // Interactive Chart Tooltips State
   const [hoveredPieSlice, setHoveredPieSlice] = useState(null); // null | 'completed' | 'overdue' | 'pending'
   const [hoveredLineNode, setHoveredLineNode] = useState(null); // null | index (0, 1, 2)
-  const [timeRange, setTimeRange] = useState('Năm'); // 'Tuần' | 'Tháng' | 'Năm'
+  const [timeRange, setTimeRange] = useState('Year'); // 'Week' | 'Month' | 'Year'
 
   // Dark Mode State
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -123,9 +200,12 @@ function App() {
   };
 
   // 2. Fetch Tasks for User
-  const fetchTasks = async (savedToken) => {
+  const fetchTasks = async (savedToken, options = {}) => {
+    const { silent = false } = options;
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const res = await axios.get(`${API_BASE}/tasks`, {
         headers: { Authorization: `Bearer ${savedToken}` }
       });
@@ -133,9 +213,11 @@ function App() {
       setError('');
     } catch (err) {
       console.error('Error fetching tasks:', err);
-      setError('Không thể tải danh sách nhiệm vụ từ server.');
+      setError('Unable to load task list from server.');
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -160,16 +242,124 @@ function App() {
     }
   }, [token]);
 
+  useEffect(() => {
+    if (!token) return undefined;
+
+    const syncAppData = () => {
+      if (document.hidden) return;
+      fetchProjects(token);
+      fetchTasks(token, { silent: true });
+    };
+
+    const intervalId = setInterval(syncAppData, 5000);
+    window.addEventListener('focus', syncAppData);
+    document.addEventListener('visibilitychange', syncAppData);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', syncAppData);
+      document.removeEventListener('visibilitychange', syncAppData);
+    };
+  }, [token]);
+
+  useEffect(() => {
+    if (!selectedProject) return;
+
+    const latestSelectedProject = projects.find((project) => project._id === selectedProject._id);
+
+    if (!latestSelectedProject) {
+      setSelectedProject(null);
+      return;
+    }
+
+    if (latestSelectedProject !== selectedProject) {
+      setSelectedProject(latestSelectedProject);
+    }
+  }, [projects, selectedProject]);
+
+  useEffect(() => {
+    if (!selectedTaskDetails) return;
+
+    const latestTask = tasks.find((task) => task._id === selectedTaskDetails._id);
+
+    if (!latestTask) {
+      setIsTaskDetailsOpen(false);
+      setSelectedTaskDetails(null);
+      return;
+    }
+
+    if (latestTask !== selectedTaskDetails) {
+      setSelectedTaskDetails(latestTask);
+    }
+  }, [tasks, selectedTaskDetails]);
+
+  // Parse invite or decline token from URL query
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    const tokenParam = params.get('inviteToken');
+    const declineParam = params.get('declineToken');
+
+    if (tabParam === 'billing') {
+      setActiveTab('billing');
+    }
+
+    if (tokenParam) {
+      setInviteToken(tokenParam);
+      if (!token) {
+        showNotification('Please log in with the invited email to accept the project invitation.', 'info');
+      }
+    }
+    if (declineParam) {
+      setDeclineToken(declineParam);
+      if (!token) {
+        showNotification('Please log in with the invited email to decline the project invitation.', 'info');
+      }
+    }
+  }, [token]);
+
+  useEffect(() => {
+    const processInviteToken = async (mode, tokenValue) => {
+      if (!user || !tokenValue) return;
+      const requestKey = `${mode}:${tokenValue}:${user._id || user.email || ''}`;
+      if (processedInviteRequestRef.current === requestKey) return;
+      processedInviteRequestRef.current = requestKey;
+      try {
+        setInviteLoading(true);
+        const route = mode === 'accept' ? 'accept' : 'decline';
+        const res = await axios.post(`${API_BASE}/projects/invites/${tokenValue}/${route}`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        showNotification(res.data.message, 'success');
+        setInviteToken('');
+        setDeclineToken('');
+        window.history.replaceState(null, '', window.location.pathname);
+        fetchProjects(token);
+        fetchTasks(token);
+      } catch (err) {
+        showNotification(err.response?.data?.message || 'Unable to process the project invitation.', 'error');
+        processedInviteRequestRef.current = '';
+      } finally {
+        setInviteLoading(false);
+      }
+    };
+
+    if (inviteToken) {
+      processInviteToken('accept', inviteToken);
+    } else if (declineToken) {
+      processInviteToken('decline', declineToken);
+    }
+  }, [user, inviteToken, declineToken, token]);
+
   // 3. Register Handler
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!authUsername.trim() || !authEmail.trim() || !authPassword.trim()) {
-      setAuthError('Vui lòng điền đầy đủ tất cả các trường.');
+      showNotification('Please fill in all required fields.', 'error');
       return;
     }
     try {
       setAuthLoading(true);
-      setAuthError('');
       const res = await axios.post(`${API_BASE}/auth/register`, {
         username: authUsername,
         email: authEmail,
@@ -187,7 +377,7 @@ function App() {
       setAuthPassword('');
     } catch (err) {
       console.error('Register error:', err);
-      setAuthError(err.response?.data?.message || 'Đăng ký không thành công. Vui lòng thử lại.');
+      showNotification(err.response?.data?.message || 'Registration failed. Please try again.', 'error');
     } finally {
       setAuthLoading(false);
     }
@@ -195,9 +385,6 @@ function App() {
 
   const changeAuthMode = (mode) => {
     setAuthMode(mode);
-    setAuthError('');
-    setPasswordResetError('');
-    setPasswordResetMessage('');
     setResetToken('');
     setAuthPassword('');
   };
@@ -206,14 +393,11 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!authEmail.trim() || !authPassword.trim()) {
-      setAuthError('Vui lòng điền email và mật khẩu.');
+      showNotification('Please enter your email and password.', 'error');
       return;
     }
     try {
       setAuthLoading(true);
-      setAuthError('');
-      setPasswordResetError('');
-      setPasswordResetMessage('');
       const res = await axios.post(`${API_BASE}/auth/login`, {
         email: authEmail,
         password: authPassword
@@ -229,7 +413,7 @@ function App() {
       setAuthPassword('');
     } catch (err) {
       console.error('Login error:', err);
-      setAuthError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản.');
+      showNotification(err.response?.data?.message || 'Login failed. Please check your credentials.', 'error');
     } finally {
       setAuthLoading(false);
     }
@@ -238,21 +422,19 @@ function App() {
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     if (!authEmail.trim()) {
-      setPasswordResetError('Vui lòng nhập email để đặt lại mật khẩu.');
+      showNotification('Please enter your email to reset your password.', 'error');
       return;
     }
     try {
       setPasswordResetLoading(true);
-      setPasswordResetError('');
-      setPasswordResetMessage('');
       const res = await axios.post(`${API_BASE}/auth/forgot-password`, {
         email: authEmail
       });
       changeAuthMode('reset');
-      setPasswordResetMessage(res.data.message || 'Yêu cầu đặt lại mật khẩu đã được gửi.');
+      showNotification(res.data.message || 'Password reset request has been sent.', 'success');
     } catch (err) {
       console.error('Forgot password error:', err);
-      setPasswordResetError(err.response?.data?.message || 'Không thể gửi email đặt lại mật khẩu.');
+      showNotification(err.response?.data?.message || 'Unable to send password reset email.', 'error');
     } finally {
       setPasswordResetLoading(false);
     }
@@ -261,13 +443,11 @@ function App() {
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (!resetToken.trim() || !authPassword.trim()) {
-      setPasswordResetError('Vui lòng nhập mã đặt lại và mật khẩu mới.');
+      showNotification('Please enter the reset code and a new password.', 'error');
       return;
     }
     try {
       setPasswordResetLoading(true);
-      setPasswordResetError('');
-      setPasswordResetMessage('');
       const res = await axios.post(`${API_BASE}/auth/reset-password`, {
         token: resetToken,
         password: authPassword
@@ -279,10 +459,10 @@ function App() {
       setAuthEmail('');
       setAuthPassword('');
       setResetToken('');
-      setPasswordResetMessage('Mật khẩu đã được đặt lại thành công.');
+      showNotification('Password reset successfully.', 'success');
     } catch (err) {
       console.error('Reset password error:', err);
-      setPasswordResetError(err.response?.data?.message || 'Không thể đặt lại mật khẩu.');
+      showNotification(err.response?.data?.message || 'Unable to reset password.', 'error');
     } finally {
       setPasswordResetLoading(false);
     }
@@ -295,14 +475,27 @@ function App() {
     setUser(null);
     setTasks([]);
     setProjects([]);
-    setAuthError('');
     setActiveTab('dashboard');
   };
 
-  // 5b. Add Project Handler
   const handleAddProject = async (e) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
+
+    const currentPlan = user?.plan || 'Free';
+    const ownedProjectsCount = projects.filter(p => {
+      const ownerId = p.user && typeof p.user === 'object' ? p.user._id : p.user;
+      return ownerId === user?._id;
+    }).length;
+
+    if (currentPlan === 'Free' && ownedProjectsCount >= 2) {
+      showNotification('Free plan allows up to 2 projects only. Upgrade to continue.', 'warning');
+      return;
+    }
+    if (currentPlan === 'Premium' && ownedProjectsCount >= 10) {
+      showNotification('Premium plan allows up to 10 projects only. Upgrade to continue.', 'warning');
+      return;
+    }
 
     try {
       const res = await axios.post(`${API_BASE}/projects`, {
@@ -319,29 +512,100 @@ function App() {
       setIsCreateProjectOpen(false);
     } catch (err) {
       console.error('Error adding project:', err);
-      alert('Không thể tạo dự án mới.');
+      showNotification('Unable to create a new project.', 'error');
+    }
+  };
+
+  const handleInviteMember = async (projectId) => {
+    if (!inviteEmail.trim()) {
+      showNotification('Please enter a member email.', 'error');
+      return;
+    }
+
+    const project = projects.find(p => p._id === projectId);
+    if (project) {
+      const currentPlan = user?.plan || 'Free';
+      const memberCount = project.members?.length || 0;
+
+      if (currentPlan === 'Free' && memberCount >= 3) {
+        showNotification('Free plan allows up to 3 members per project only. Upgrade to continue.', 'warning');
+        return;
+      }
+      if (currentPlan === 'Premium' && memberCount >= 10) {
+        showNotification('Premium plan allows up to 10 members per project only. Upgrade to continue.', 'warning');
+        return;
+      }
+    }
+
+    try {
+      setInviteLoading(true);
+      await axios.post(`${API_BASE}/projects/${projectId}/invite`, {
+        email: inviteEmail
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showNotification('Invitation has been sent to the member email.', 'success');
+      setInviteEmail('');
+      fetchProjects(token);
+    } catch (err) {
+      console.error('Invite member error:', err);
+      showNotification(err.response?.data?.message || 'Unable to send member invitation.', 'error');
+    } finally {
+      setInviteLoading(false);
     }
   };
 
   // 5c. Delete Project Handler
   const handleDeleteProject = async (id, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm('Bạn có chắc chắn muốn xóa dự án này? Các nhiệm vụ thuộc dự án sẽ tự động chuyển về trạng thái không thuộc dự án nào.')) return;
-
-    try {
-      await axios.delete(`${API_BASE}/projects/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setProjects(projects.filter(p => p._id !== id));
-      // Cập nhật local tasks thuộc dự án này thành null
-      setTasks(tasks.map(t => t.project === id ? { ...t, project: null } : t));
-      if (selectedProject?._id === id) {
-        setSelectedProject(null);
+    showNotification({
+      message: 'Are you sure you want to delete this project? All tasks in the project will be moved to no project.',
+      type: 'warning',
+      actionLabel: 'Delete project',
+      cancelLabel: 'Cancel',
+      onAction: async () => {
+        try {
+          await axios.delete(`${API_BASE}/projects/${id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setProjects((prevProjects) => prevProjects.filter((project) => project._id !== id));
+          setTasks((prevTasks) => prevTasks.map((task) => task.project === id ? { ...task, project: null } : task));
+          if (selectedProject?._id === id) {
+            setSelectedProject(null);
+          }
+          showNotification('Project deleted successfully.', 'success');
+        } catch (err) {
+          console.error('Error deleting project:', err);
+          showNotification('Unable to delete the project.', 'error');
+        }
       }
-    } catch (err) {
-      console.error('Error deleting project:', err);
-      alert('Không thể xóa dự án.');
-    }
+    });
+  };
+
+  const handleLeaveProject = async (id, e) => {
+    if (e) e.stopPropagation();
+    showNotification({
+      message: 'Are you sure you want to leave this project? Tasks assigned to you in this project will no longer be available in your workspace.',
+      type: 'warning',
+      actionLabel: 'Leave project',
+      cancelLabel: 'Cancel',
+      onAction: async () => {
+        try {
+          await axios.post(`${API_BASE}/projects/${id}/leave`, {}, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setProjects((prevProjects) => prevProjects.filter((project) => project._id !== id));
+          setTasks((prevTasks) => prevTasks.filter((task) => task.project !== id));
+          if (selectedProject?._id === id) {
+            setSelectedProject(null);
+          }
+          showNotification('You left the project successfully.', 'success');
+        } catch (err) {
+          console.error('Error leaving project:', err);
+          showNotification(err.response?.data?.message || 'Unable to leave the project.', 'error');
+        }
+      }
+    });
   };
 
   // 6. Handle Avatar File Upload and Convert to Base64
@@ -349,12 +613,12 @@ function App() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        setProfileError('Kích thước ảnh đại diện không vượt quá 2MB.');
+        showNotification('Avatar size must be 2MB or smaller.', 'error');
         return;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setProfileAvatar(reader.result); // Chuỗi Base64
+        setProfileAvatar(reader.result); // Base64 string
       };
       reader.readAsDataURL(file);
     }
@@ -364,14 +628,12 @@ function App() {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     if (!profileUsername.trim()) {
-      setProfileError('Tên tài khoản không được để trống.');
+      showNotification('Username cannot be empty.', 'error');
       return;
     }
 
     try {
       setProfileLoading(true);
-      setProfileError('');
-      setProfileSuccess('');
 
       const res = await axios.put(`${API_BASE}/auth/profile`, {
         username: profileUsername,
@@ -382,21 +644,19 @@ function App() {
       });
 
       setUser(res.data);
-      setProfileSuccess('Cập nhật tài khoản thành công!');
+      showNotification('Profile updated successfully!', 'success');
 
       if (res.data.token) {
         localStorage.setItem('token', res.data.token);
         setToken(res.data.token);
       }
 
-      // Đóng modal sau 1.2s
       setTimeout(() => {
         setIsProfileOpen(false);
-        setProfileSuccess('');
       }, 1200);
     } catch (err) {
       console.error('Profile update error:', err);
-      setProfileError(err.response?.data?.message || 'Cập nhật tài khoản thất bại.');
+      showNotification(err.response?.data?.message || 'Failed to update profile.', 'error');
     } finally {
       setProfileLoading(false);
     }
@@ -407,13 +667,35 @@ function App() {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
 
+    const targetProjectId = forceProject || newTaskProject;
+    if (targetProjectId) {
+      const project = projects.find(p => p._id === targetProjectId);
+      if (project) {
+        const projectOwnerId = project.user && typeof project.user === 'object' ? project.user._id : project.user;
+        const currentPlan = user?.plan || 'Free';
+
+        if (projectOwnerId === user?._id) {
+          const projectTasksCount = tasks.filter(t => t.project === targetProjectId).length;
+          if (currentPlan === 'Free' && projectTasksCount >= 15) {
+            showNotification('Free projects can only have up to 15 tasks. Upgrade to continue.', 'warning');
+            return;
+          }
+          if (currentPlan === 'Premium' && projectTasksCount >= 50) {
+            showNotification('Premium projects can only have up to 50 tasks. Upgrade to continue.', 'warning');
+            return;
+          }
+        }
+      }
+    }
+
     try {
       const taskData = {
         title: newTaskTitle,
         priority: newPriority,
         category: newCategory,
         deadline: newDeadline || getTodayStr(),
-        project: forceProject || newTaskProject || null
+        project: targetProjectId || null,
+        assignee: newTaskAssignee || null
       };
 
       const res = await axios.post(`${API_BASE}/tasks`, taskData, {
@@ -423,9 +705,10 @@ function App() {
       setNewTaskTitle('');
       setNewDeadline('');
       setNewTaskProject('');
+      setNewTaskAssignee('');
     } catch (err) {
       console.error('Error adding task:', err);
-      alert('Không thể thêm nhiệm vụ mới.');
+      showNotification(err.response?.data?.message || 'Unable to add a new task.', 'error');
     }
   };
 
@@ -442,22 +725,30 @@ function App() {
       setTasks(tasks.map(task => task._id === id ? res.data : task));
     } catch (err) {
       console.error('Error toggling task:', err);
-      alert('Không thể cập nhật trạng thái nhiệm vụ.');
+      showNotification('Unable to update task status.', 'error');
     }
   };
 
   // 10. Delete Task via API
   const deleteTask = async (id) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa nhiệm vụ này?')) return;
-    try {
-      await axios.delete(`${API_BASE}/tasks/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTasks(tasks.filter(task => task._id !== id));
-    } catch (err) {
-      console.error('Error deleting task:', err);
-      alert('Không thể xóa nhiệm vụ.');
-    }
+    showNotification({
+      message: 'Are you sure you want to delete this task?',
+      type: 'warning',
+      actionLabel: 'Delete task',
+      cancelLabel: 'Cancel',
+      onAction: async () => {
+        try {
+          await axios.delete(`${API_BASE}/tasks/${id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
+          showNotification('Task deleted successfully.', 'success');
+        } catch (err) {
+          console.error('Error deleting task:', err);
+          showNotification('Unable to delete the task.', 'error');
+        }
+      }
+    });
   };
 
   // 10b. Task Details Modal Handlers
@@ -466,10 +757,11 @@ function App() {
     setEditTaskTitle(task.title || '');
     setEditTaskDesc(task.description || '');
     setEditTaskDeadline(task.deadline || '');
-    setEditTaskPriority(task.priority || 'Trung bình');
-    setEditTaskCategory(task.category || 'Cá nhân');
+    setEditTaskPriority(task.priority || 'Medium');
+    setEditTaskCategory(task.category || 'Personal');
     setEditTaskProject(task.project || '');
     setEditTaskStatus(getTaskStatus(task));
+    setEditTaskAssignee(task.assignee && typeof task.assignee === 'object' ? task.assignee._id : task.assignee || '');
     setIsTaskDetailsOpen(true);
   };
 
@@ -487,7 +779,8 @@ function App() {
         category: editTaskCategory,
         project: editTaskProject || null,
         status: editTaskStatus,
-        completed: editTaskStatus === 'done'
+        completed: editTaskStatus === 'done',
+        assignee: editTaskAssignee || null
       };
 
       const res = await axios.put(`${API_BASE}/tasks/${selectedTaskDetails._id}`, updatedData, {
@@ -499,7 +792,7 @@ function App() {
       setSelectedTaskDetails(null);
     } catch (err) {
       console.error('Error updating task details:', err);
-      alert('Không thể lưu thay đổi của nhiệm vụ.');
+      showNotification(err.response?.data?.message || 'Unable to save task changes.', 'error');
     }
   };
 
@@ -523,7 +816,7 @@ function App() {
   };
 
   const handleDragLeave = () => {
-    // Không làm gì để tránh nhấp nháy giao diện
+    // Do nothing to avoid UI flicker
   };
 
   const handleDrop = async (e, targetStatus) => {
@@ -556,7 +849,7 @@ function App() {
       });
     } catch (err) {
       console.error('Error updating task status via Drag and Drop:', err);
-      alert('Không thể cập nhật trạng thái nhiệm vụ lên máy chủ. Đang khôi phục...');
+      showNotification('Unable to update task status on the server. Restoring previous state...', 'error');
       fetchTasks(token);
     }
   };
@@ -567,7 +860,7 @@ function App() {
     return proj ? { name: proj.name, color: proj.color } : null;
   };
 
-  // Helper để phân loại trạng thái Task
+  // Helper to classify task status
   const getTaskStatus = (task) => {
     if (task.status) return task.status;
     if (task.completed) return 'done';
@@ -577,7 +870,7 @@ function App() {
 
   const todayStr = getTodayStr();
 
-  // Lọc nhiệm vụ theo dự án được chọn trên Bảng Kanban
+  // Filter tasks by the selected project on the Kanban board
   const filteredTasks = tasks.filter(task => {
     if (kanbanProjectFilter === 'all') return true;
     if (kanbanProjectFilter === 'free') return !task.project;
@@ -591,7 +884,7 @@ function App() {
   const inProgressCount = tasks.filter(t => !t.completed && t.deadline && t.deadline >= todayStr).length;
   const notStartedCount = tasks.filter(t => !t.completed && !t.deadline).length;
 
-  // "Chưa hoàn thành" = not completed tasks (in progress + not started)
+  // "Pending" = not completed tasks (in progress + not started)
   const pendingCount = inProgressCount + notStartedCount;
 
   // Calculations for Pie Chart percentages
@@ -614,17 +907,17 @@ function App() {
   // --- Time-based Trend Data for Line Chart ---
   const lineChartData = [
     {
-      label: 'Tháng 9',
+      label: 'September',
       completed: Math.max(1, Math.round(completedCount * 0.4)),
       total: Math.max(2, Math.round(totalTasks * 0.45)),
     },
     {
-      label: 'Tháng 10',
+      label: 'October',
       completed: Math.max(2, Math.round(completedCount * 0.7)),
       total: Math.max(4, Math.round(totalTasks * 0.75)),
     },
     {
-      label: 'Tháng 11',
+      label: 'November',
       completed: completedCount,
       total: totalTasks,
     }
@@ -648,36 +941,36 @@ function App() {
   // Render Authentication Screen if not logged in
   if (!token) {
     return (
-      <AuthScreen
-        authMode={authMode}
-        setAuthMode={changeAuthMode}
-        authUsername={authUsername}
-        setAuthUsername={setAuthUsername}
-        authEmail={authEmail}
-        setAuthEmail={setAuthEmail}
-        authPassword={authPassword}
-        setAuthPassword={setAuthPassword}
-        resetToken={resetToken}
-        setResetToken={setResetToken}
-        showPassword={showPassword}
-        setShowPassword={setShowPassword}
-        authError={authError}
-        setAuthError={setAuthError}
-        passwordResetMessage={passwordResetMessage}
-        passwordResetError={passwordResetError}
-        passwordResetLoading={passwordResetLoading}
-        authLoading={authLoading}
-        handleLogin={handleLogin}
-        handleRegister={handleRegister}
-        handleForgotPassword={handleForgotPassword}
-        handleResetPassword={handleResetPassword}
-      />
+      <>
+        <NotificationBanner notification={notification} onClose={hideNotification} />
+        <AuthScreen
+          authMode={authMode}
+          setAuthMode={changeAuthMode}
+          authUsername={authUsername}
+          setAuthUsername={setAuthUsername}
+          authEmail={authEmail}
+          setAuthEmail={setAuthEmail}
+          authPassword={authPassword}
+          setAuthPassword={setAuthPassword}
+          resetToken={resetToken}
+          setResetToken={setResetToken}
+          showPassword={showPassword}
+          setShowPassword={setShowPassword}
+          passwordResetLoading={passwordResetLoading}
+          authLoading={authLoading}
+          handleLogin={handleLogin}
+          handleRegister={handleRegister}
+          handleForgotPassword={handleForgotPassword}
+          handleResetPassword={handleResetPassword}
+        />
+      </>
     );
   }
 
   // Main Authenticated Dashboard (Nuegas Layout)
   return (
     <div className={`flex h-screen bg-slate-50 text-slate-800 font-sans relative transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100`}>
+      <NotificationBanner notification={notification} onClose={hideNotification} />
 
       {/* Profile Update Modal */}
       <ProfileModal
@@ -690,8 +983,6 @@ function App() {
         profileAvatar={profileAvatar}
         handleAvatarChange={handleAvatarChange}
         handleUpdateProfile={handleUpdateProfile}
-        profileError={profileError}
-        profileSuccess={profileSuccess}
         profileLoading={profileLoading}
         user={user}
       />
@@ -727,11 +1018,13 @@ function App() {
         setEditTaskProject={setEditTaskProject}
         editTaskStatus={editTaskStatus}
         setEditTaskStatus={setEditTaskStatus}
+        editTaskAssignee={editTaskAssignee}
+        setEditTaskAssignee={setEditTaskAssignee}
         handleUpdateTaskDetails={handleUpdateTaskDetails}
         projects={projects}
+        user={user}
       />
 
-      {/* Left Sidebar */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -740,8 +1033,6 @@ function App() {
         setProfileUsername={setProfileUsername}
         setProfileAvatar={setProfileAvatar}
         setProfilePassword={setProfilePassword}
-        setProfileError={setProfileError}
-        setProfileSuccess={setProfileSuccess}
         user={user}
         handleLogout={handleLogout}
       />
@@ -757,11 +1048,10 @@ function App() {
           setProfileUsername={setProfileUsername}
           setProfileAvatar={setProfileAvatar}
           setProfilePassword={setProfilePassword}
-          setProfileError={setProfileError}
-          setProfileSuccess={setProfileSuccess}
           handleLogout={handleLogout}
           isDarkMode={isDarkMode}
           toggleDarkMode={toggleDarkMode}
+          showNotification={showNotification}
         />
 
         {/* Tab Switcher */}
@@ -814,6 +1104,7 @@ function App() {
             setSelectedProject={setSelectedProject}
             setIsCreateProjectOpen={setIsCreateProjectOpen}
             handleDeleteProject={handleDeleteProject}
+            handleLeaveProject={handleLeaveProject}
             newTaskTitle={newTaskTitle}
             setNewTaskTitle={setNewTaskTitle}
             newPriority={newPriority}
@@ -828,12 +1119,20 @@ function App() {
             setNewProjectName={setNewProjectName}
             setNewProjectDesc={setNewProjectDesc}
             setNewProjectColor={setNewProjectColor}
+            user={user}
+            handleInviteMember={handleInviteMember}
+            inviteEmail={inviteEmail}
+            setInviteEmail={setInviteEmail}
+            inviteLoading={inviteLoading}
+            newTaskAssignee={newTaskAssignee}
+            setNewTaskAssignee={setNewTaskAssignee}
           />
         )}
 
         {activeTab === 'kanban' && (
           <KanbanTab
             projects={projects}
+            showNotification={showNotification}
             filteredTasks={filteredTasks}
             kanbanProjectFilter={kanbanProjectFilter}
             setKanbanProjectFilter={setKanbanProjectFilter}
@@ -852,6 +1151,15 @@ function App() {
             deleteTask={deleteTask}
             openTaskDetails={openTaskDetails}
             todayStr={todayStr}
+          />
+        )}
+
+        {activeTab === 'billing' && (
+          <BillingTab
+            user={user}
+            token={token}
+            fetchUserInfo={fetchUserInfo}
+            showNotification={showNotification}
           />
         )}
       </main>

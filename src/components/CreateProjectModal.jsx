@@ -25,18 +25,18 @@ export default function CreateProjectModal({
 
         <div className="flex items-center gap-2.5 mb-5 border-b border-slate-200 dark:border-slate-800 pb-3 transition-colors">
           <span className="text-xl">📁</span>
-          <h3 className="font-extrabold text-base">Tạo dự án mới</h3>
+          <h3 className="font-extrabold text-base">Create new project</h3>
         </div>
 
         <form onSubmit={handleAddProject} className="space-y-4">
           {/* Project Name */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Tên dự án</label>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Project name</label>
             <input
               type="text"
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
-              placeholder="Nhập tên dự án..."
+              placeholder="Enter project name..."
               className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-600 transition-all placeholder-slate-400 dark:placeholder-slate-600"
               required
             />
@@ -44,11 +44,11 @@ export default function CreateProjectModal({
 
           {/* Description */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Mô tả dự án</label>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Project description</label>
             <textarea
               value={newProjectDesc}
               onChange={(e) => setNewProjectDesc(e.target.value)}
-              placeholder="Mô tả mục tiêu của dự án này..."
+              placeholder="Describe the goals for this project..."
               rows="3"
               className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-600 transition-all placeholder-slate-400 dark:placeholder-slate-600 resize-none"
             />
@@ -56,7 +56,7 @@ export default function CreateProjectModal({
 
           {/* Color Presets */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Tông màu dự án</label>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Project color</label>
             <div className="flex flex-wrap gap-2.5 pt-1">
               {['#8B5CF6', '#3B82F6', '#10B981', '#F43F5E', '#F59E0B', '#EC4899', '#14B8A6', '#06B6D4'].map((color) => (
                 <button
@@ -84,13 +84,13 @@ export default function CreateProjectModal({
               onClick={() => setIsCreateProjectOpen(false)}
               className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
-              HỦY BỎ
+              Cancel
             </button>
             <button
               type="submit"
               className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-750 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-lg shadow-violet-600/10 hover:shadow-violet-600/20"
             >
-              TẠO DỰ ÁN
+              Create project
             </button>
           </div>
         </form>

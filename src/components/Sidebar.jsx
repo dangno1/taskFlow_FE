@@ -8,8 +8,6 @@ export default function Sidebar({
   setProfileUsername,
   setProfileAvatar,
   setProfilePassword,
-  setProfileError,
-  setProfileSuccess,
   setSelectedProject,
   handleLogout
 }) {
@@ -17,8 +15,6 @@ export default function Sidebar({
     setProfileUsername(user?.username || '');
     setProfileAvatar(user?.avatar || '');
     setProfilePassword('');
-    setProfileError('');
-    setProfileSuccess('');
     setIsProfileOpen(true);
   };
 
@@ -31,7 +27,7 @@ export default function Sidebar({
             D
           </div>
           <div>
-            <h1 className="font-extrabold text-lg leading-tight tracking-tight text-slate-800 dark:text-white">DANGND_UTC</h1>
+            <h1 className="font-extrabold text-lg leading-tight tracking-tight text-slate-800 dark:text-white">DANGND</h1>
           </div>
         </div>
 
@@ -74,6 +70,19 @@ export default function Sidebar({
             Kanban
           </button>
           <button
+            onClick={() => {
+              setActiveTab('billing');
+              setSelectedProject(null);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all cursor-pointer ${activeTab === 'billing'
+              ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+              }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+            Billing
+          </button>
+          <button
             onClick={handleOpenProfile}
             className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl text-sm font-semibold transition-all cursor-pointer dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
           >
@@ -89,10 +98,10 @@ export default function Sidebar({
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl cursor-pointer active:scale-[0.98] transition-all font-bold text-sm shadow-sm dark:bg-rose-950/30 dark:border-rose-900/50 dark:text-rose-500 dark:hover:bg-rose-900/40"
-          title="Đăng xuất khỏi hệ thống"
+          title="Log out"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-          Đăng xuất
+          Log out
         </button>
       </div>
     </aside>

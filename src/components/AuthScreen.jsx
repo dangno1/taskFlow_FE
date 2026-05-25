@@ -13,10 +13,6 @@ export default function AuthScreen({
   setResetToken,
   showPassword,
   setShowPassword,
-  authError,
-  setAuthError,
-  passwordResetMessage,
-  passwordResetError,
   passwordResetLoading,
   authLoading,
   handleLogin,
@@ -25,20 +21,20 @@ export default function AuthScreen({
   handleResetPassword
 }) {
   const title = authMode === 'register'
-    ? 'Đăng ký tài khoản mới'
+    ? 'Register a new account'
     : authMode === 'forgot'
-      ? 'Quên mật khẩu'
+      ? 'Forgot password'
       : authMode === 'reset'
-        ? 'Đặt lại mật khẩu'
-        : 'Đăng nhập tài khoản';
+        ? 'Reset password'
+        : 'Log in';
 
   const submitLabel = authMode === 'register'
-    ? 'Đăng ký tài khoản'
+    ? 'Register'
     : authMode === 'forgot'
-      ? 'Gửi yêu cầu đặt lại'
+      ? 'Send reset request'
       : authMode === 'reset'
-        ? 'Đặt lại mật khẩu'
-        : 'Đăng nhập ngay';
+        ? 'Reset password'
+        : 'Log in now';
 
   const showPasswordField = authMode !== 'forgot';
   const showUsernameField = authMode === 'register';
@@ -52,8 +48,6 @@ export default function AuthScreen({
         ? handleForgotPassword
         : handleResetPassword;
 
-  const displayError = authError || passwordResetError;
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center items-center relative overflow-hidden font-sans animate-in fade-in duration-300 transition-colors">
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/20 rounded-full filter blur-[100px] animate-pulse"></div>
@@ -64,35 +58,22 @@ export default function AuthScreen({
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 font-bold text-3xl text-white shadow-xl shadow-violet-500/20 mb-4 animate-bounce">
             D
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight leading-none mb-2 transition-colors">DANGND_UTC</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm transition-colors">Hệ thống quản lý công việc cá nhân thông minh</p>
+          <h1 className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight leading-none mb-2 transition-colors">DANGND</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm transition-colors">Smart personal task management system</p>
         </div>
 
         <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-2xl transition-colors">
           <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6 text-center transition-colors">{title}</h2>
 
-          {displayError && (
-            <div className="mb-5 p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-semibold flex items-center gap-2">
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-              {displayError}
-            </div>
-          )}
-
-          {passwordResetMessage && (
-            <div className="mb-5 p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-500 text-xs font-semibold">
-              {passwordResetMessage}
-            </div>
-          )}
-
           <form onSubmit={formSubmitHandler} className="space-y-4">
             {showUsernameField && (
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Tên tài khoản</label>
+                <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Username</label>
                 <input
                   type="text"
                   value={authUsername}
                   onChange={(e) => setAuthUsername(e.target.value)}
-                  placeholder="Nhập tên tài khoản..."
+                  placeholder="Enter username..."
                   className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-600 transition-all placeholder-slate-400 dark:placeholder-slate-600"
                   required
                 />
@@ -100,12 +81,12 @@ export default function AuthScreen({
             )}
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Email đăng nhập</label>
+              <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Login email</label>
               <input
                 type="email"
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
-                placeholder="Nhập địa chỉ email..."
+                placeholder="Enter your email..."
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-600 transition-all placeholder-slate-400 dark:placeholder-slate-600"
                 required
               />
@@ -113,12 +94,12 @@ export default function AuthScreen({
 
             {showResetTokenField && (
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Mã đặt lại</label>
+                <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">Reset code</label>
                 <input
                   type="text"
                   value={resetToken}
                   onChange={(e) => setResetToken(e.target.value)}
-                  placeholder="Nhập mã đặt lại từ email..."
+                  placeholder="Enter the reset code from email..."
                   className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-600 transition-all placeholder-slate-400 dark:placeholder-slate-600"
                   required
                 />
@@ -128,13 +109,13 @@ export default function AuthScreen({
             {showPasswordField && (
               <div className="relative">
                 <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider transition-colors">
-                  {authMode === 'reset' ? 'Mật khẩu mới' : 'Mật khẩu'}
+                  {authMode === 'reset' ? 'New password' : 'Password'}
                 </label>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder={authMode === 'reset' ? 'Nhập mật khẩu mới...' : 'Nhập mật khẩu...'}
+                  placeholder={authMode === 'reset' ? 'Enter a new password...' : 'Enter password...'}
                   className="w-full px-4 pr-10 py-3 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-600 transition-all placeholder-slate-400 dark:placeholder-slate-600"
                   required
                 />
@@ -177,21 +158,19 @@ export default function AuthScreen({
                   type="button"
                   onClick={() => {
                     setAuthMode('forgot');
-                    setAuthError('');
                   }}
-                  className="text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
+                  className="block mx-auto mb-2 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
                 >
-                  Quên mật khẩu?
+                  Forgot password?
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setAuthMode('register');
-                    setAuthError('');
                   }}
-                  className="block text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
+                  className="block mx-auto text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
                 >
-                  Bạn chưa có tài khoản? Đăng ký ngay
+                  Don't have an account? Register now
                 </button>
               </>
             )}
@@ -201,11 +180,10 @@ export default function AuthScreen({
                 type="button"
                 onClick={() => {
                   setAuthMode('login');
-                  setAuthError('');
                 }}
                 className="text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
               >
-                Đã có tài khoản? Đăng nhập ngay
+                Already have an account? Log in now
               </button>
             )}
 
@@ -215,21 +193,19 @@ export default function AuthScreen({
                   type="button"
                   onClick={() => {
                     setAuthMode('reset');
-                    setAuthError('');
                   }}
                   className="block text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
                 >
-                  Tôi đã có mã đặt lại
+                  I already have a reset code
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setAuthMode('login');
-                    setAuthError('');
                   }}
                   className="text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
                 >
-                  Quay lại đăng nhập
+                  Back to login
                 </button>
               </>
             )}
@@ -239,11 +215,10 @@ export default function AuthScreen({
                 type="button"
                 onClick={() => {
                   setAuthMode('login');
-                  setAuthError('');
                 }}
                 className="text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
               >
-                Quay lại đăng nhập
+                Back to login
               </button>
             )}
           </div>
