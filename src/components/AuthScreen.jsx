@@ -15,8 +15,11 @@ export default function AuthScreen({
   setShowPassword,
   passwordResetLoading,
   authLoading,
+  googleLoading,
+  googleReady,
   handleLogin,
   handleRegister,
+  handleGoogleSignIn,
   handleForgotPassword,
   handleResetPassword
 }) {
@@ -149,6 +152,30 @@ export default function AuthScreen({
                 submitLabel
               )}
             </button>
+
+            {(authMode === 'login' || authMode === 'register') && (
+              <div className="mt-4">
+                <div className="flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-slate-400 mb-4">
+                  <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800"></span>
+                  <span>{authMode === 'login' ? 'or sign in with' : 'or sign up with'}</span>
+                  <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800"></span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={!googleReady || googleLoading}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900 transition-all"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#4285F4" d="M23.64 12.204c0-.74-.067-1.45-.193-2.14H12.5v4.05h6.52c-.28 1.52-1.08 2.81-2.31 3.68v3.05h3.73c2.18-2.01 3.44-4.96 3.44-8.66z"/>
+                    <path fill="#34A853" d="M12.5 24c3.13 0 5.76-1.03 7.68-2.8l-3.73-3.05c-1.04.7-2.37 1.1-3.95 1.1-3.04 0-5.61-2.05-6.53-4.8H2.2v3.03C4.1 21.84 8.97 24 12.5 24z"/>
+                    <path fill="#FBBC05" d="M5.97 14.43A7.59 7.59 0 0 1 5.5 12c0-.82.14-1.62.4-2.35V6.62H2.2A12.5 12.5 0 0 0 0 12c0 1.96.46 3.82 1.28 5.5l4.69-3.07z"/>
+                    <path fill="#EA4335" d="M12.5 4.77c1.7 0 3.23.58 4.43 1.73l3.33-3.33C18.28 1.28 15.63 0 12.5 0 8.97 0 4.1 2.16 2.2 5.62l4.72 3.03C6.9 6.82 9.46 4.77 12.5 4.77z"/>
+                  </svg>
+                  {googleLoading ? 'Processing...' : authMode === 'login' ? 'Continue with Google' : 'Sign up with Google'}
+                </button>
+              </div>
+            )}
           </form>
 
           <div className="mt-6 text-center space-y-3">

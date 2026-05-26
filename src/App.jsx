@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 
 // Component Imports
@@ -14,7 +14,7 @@ import KanbanTab from './components/KanbanTab';
 import BillingTab from './components/BillingTab';
 import NotificationBanner from './components/NotificationBanner';
 
-const API_BASE = 'http://localhost:5050/api';
+const API_BASE = "https://task-flow-be-iota.vercel.app/api" || 'http://localhost:5050/api';
 
 function App() {
   // Auth State
@@ -28,9 +28,13 @@ function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleReady, setGoogleReady] = useState(false);
   const [resetToken, setResetToken] = useState('');
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const googleInitRef = useRef(false);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteToken, setInviteToken] = useState('');
   const [declineToken, setDeclineToken] = useState('');
@@ -177,6 +181,43 @@ function App() {
       localStorage.setItem('theme', 'light');
     }
   }, [isDarkMode]);
+
+  useEffect(() => {
+    if (!googleClientId) return;
+
+    if (window.google?.accounts?.id) {
+      setGoogleReady(true);
+      return;
+    }
+
+    const existingScript = document.getElementById('google-client-script');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => {
+        if (window.google?.accounts?.id) {
+          setGoogleReady(true);
+        }
+      });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.id = 'google-client-script';
+    script.onload = () => {
+      if (window.google?.accounts?.id) {
+        setGoogleReady(true);
+      }
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+  }, [googleClientId]);
 
   const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
 
@@ -418,6 +459,55 @@ function App() {
       setAuthLoading(false);
     }
   };
+
+  const loginWithGoogle = useCallback(async (idToken) => {
+    setGoogleLoading(true);
+    try {
+      const res = await axios.post(`${API_BASE}/auth/google`, { idToken });
+      const { token: receivedToken, username, email, avatar } = res.data;
+      localStorage.setItem('token', receivedToken);
+      setToken(receivedToken);
+      setUser({ username, email, avatar });
+      setAuthUsername('');
+      setAuthEmail('');
+      setAuthPassword('');
+      showNotification('Đăng nhập bằng Google thành công!', 'success');
+    } catch (err) {
+      console.error('Google login error:', err);
+      showNotification(err.response?.data?.message || 'Google login failed.', 'error');
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [showNotification]);
+
+  const handleGoogleSignIn = useCallback(() => {
+    if (!googleClientId) {
+      showNotification('Vui lòng cấu hình GOOGLE_CLIENT_ID để bật đăng nhập bằng Google.', 'error');
+      return;
+    }
+    if (!googleReady || !window.google?.accounts?.id) {
+      showNotification('Google login chưa sẵn sàng. Vui lòng thử lại sau.', 'error');
+      return;
+    }
+    window.google.accounts.id.prompt();
+  }, [googleClientId, googleReady, showNotification]);
+
+  useEffect(() => {
+    if (!googleReady || googleInitRef.current || !googleClientId) return;
+    if (!window.google?.accounts?.id) return;
+
+    window.google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: async (response) => {
+        if (response?.credential) {
+          await loginWithGoogle(response.credential);
+        }
+      },
+      auto_select: false
+    });
+
+    googleInitRef.current = true;
+  }, [googleReady, googleClientId, loginWithGoogle]);
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
@@ -958,7 +1048,10 @@ function App() {
           setShowPassword={setShowPassword}
           passwordResetLoading={passwordResetLoading}
           authLoading={authLoading}
+          googleLoading={googleLoading}
+          googleReady={googleReady}
           handleLogin={handleLogin}
+          handleGoogleSignIn={handleGoogleSignIn}
           handleRegister={handleRegister}
           handleForgotPassword={handleForgotPassword}
           handleResetPassword={handleResetPassword}

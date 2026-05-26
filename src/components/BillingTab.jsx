@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import PaymentModal from './PaymentModal';
 
-const API_BASE = 'http://localhost:5050/api';
+const API_BASE = "https://task-flow-be-iota.vercel.app/api" || 'http://localhost:5050/api';
 
 const PLAN_CONFIG = {
   Free: {

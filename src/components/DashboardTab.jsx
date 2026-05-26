@@ -41,7 +41,7 @@ export default function DashboardTab({
   return (
     <div className="flex-1 p-8 space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-300">
       {/* Title & Refresh Row */}
-      <div className="flex justify-between items-center">
+      {/* <div className="flex justify-between items-center">
         <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Overview</h3>
         <button
           onClick={() => fetchTasks(token)}
@@ -50,7 +50,7 @@ export default function DashboardTab({
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path></svg>
           Refresh
         </button>
-      </div>
+      </div> */}
 
       {/* TOP ROW: Overview Card & Statistics grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

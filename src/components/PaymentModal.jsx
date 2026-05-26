@@ -99,7 +99,7 @@ export default function PaymentModal({
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="">
               <div className="rounded-3xl border border-slate-200 p-4 dark:border-slate-800">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">VNPay order info</p>
                 <p className="mt-2 text-base font-extrabold text-slate-800 dark:text-slate-100">Sandbox checkout</p>
@@ -124,7 +124,7 @@ export default function PaymentModal({
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 p-4 dark:border-slate-800">
+              {/* <div className="rounded-3xl border border-slate-200 p-4 dark:border-slate-800">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Sandbox test card</p>
                 <ul className="mt-4 space-y-2.5 text-sm font-medium text-slate-600 dark:text-slate-300">
                   <li>Bank: NCB</li>
@@ -137,7 +137,7 @@ export default function PaymentModal({
                 <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 px-3 py-2.5 text-xs font-bold text-violet-700 dark:border-violet-900 dark:bg-violet-900/30 dark:text-violet-300">
                   This uses the official VNPay sandbox. No real money is charged, but the redirect and return flow are real.
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
 
